@@ -9,8 +9,8 @@
   <includePath>../</includePath>
  </php>
  <filter>
-  <whitelist addUncoveredFilesFromWhitelist="true">
-   <directory suffix=".php">../Services/</directory>
+  <whitelist>
+   <directory suffix="Test.php">./tests</directory>
   </whitelist>
  </filter>
 </phpunit>

@@ -1,18 +1,15 @@
 <?php
 
-require_once 'Services/Yadis/Xrds.php';
+namespace Tests\Yadis;
 
-class Services_Yadis_XrdsTest extends PHPUnit_Framework_TestCase
+use PHPUnit\Framework\TestCase;
+
+class XrdsTest extends TestCase
 {
     protected $_namespace = null;
 
-    public function setUp()
+    public function setUp(): void
     {
         $this->_namespace = $this->getMock('Services_Yadis_Xrds_Namespace');
     }
-
-    public function test()
-    {
-    }
-
 }

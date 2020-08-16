@@ -1,4 +1,16 @@
 <?php
+
+namespace Pear\Services\Yadis;
+
+use DOMDocument;
+use Pear\Http\Request2;
+use Pear\Http\Request2\Exceptions\Request2Exception;
+use Pear\Http\Request2\Response;
+use Pear\Services\Yadis\Exceptions\YadisException;
+use Pear\Services\Yadis\Xrds\XrdsNamespace;
+use Pear\Services\Yadis\Xrds\XrdsService;
+use SimpleXMLElement;
+
 /**
  * Implementation of the Yadis Specification 1.0 protocol for service
  * discovery from an Identity URI/XRI or other.
@@ -35,31 +47,21 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * @category Services
- * @package  Services_Yadis
+ * @package  Yadis
  * @author   Pádraic Brady <padraic.brady@yahoo.com>
  * @license  http://opensource.org/licenses/bsd-license.php New BSD License
- * @link     http://pear.php.net/Services_Yadis
+ * @link     http://pear.php.net/Yadis
  */
 
 /**
- *  required files
- */
-require_once 'Services/Yadis/Xrds/Service.php';
-require_once 'Services/Yadis/Exception.php';
-require_once 'Services/Yadis/Xrds/Namespace.php';
-require_once 'Services/Yadis/Xri.php';
-require_once 'HTTP/Request2.php';
-require_once 'Validate.php';
-
-/**
- * Services_Yadis class
+ * Yadis class
  *
- * Services_Yadis will provide a method of Service Discovery implemented
+ * Yadis will provide a method of Service Discovery implemented
  * in accordance with the Yadis Specification 1.0. This describes a protocol
  * for locating an XRD document which details Services available. The XRD is
  * typically specific to a single user, identified by their Yadis ID.
- * Services_Yadis_XRDS will be a wrapper which is responsible for parsing
- * and presenting an iterable list of Services_Yadis_Service objects
+ * Yadis_XRDS will be a wrapper which is responsible for parsing
+ * and presenting an iterable list of Yadis_Service objects
  * holding the data for each specific Service discovered.
  *
  * Note that class comments cannot substitute for a full understanding of the
@@ -73,7 +75,7 @@ require_once 'Validate.php';
  *      Example 1: OpenID Service Discovery
  *
  *      $openid = 'http://padraic.astrumfutura.com';
- *      $yadis = new Services_Yadis($openid);
+ *      $yadis = new Yadis($openid);
  *      $yadis->addNamespace('openid', 'http://openid.net/xmlns/1.0');
  *      $serviceList = $yadis->discover();
  *
@@ -90,12 +92,12 @@ require_once 'Validate.php';
  *      Priority is 0
  *
  * @category Services
- * @package  Services_Yadis
+ * @package  Yadis
  * @author   Pádraic Brady <padraic.brady@yahoo.com>
  * @license  http://opensource.org/licenses/bsd-license.php New BSD License
- * @link     http://pear.php.net/Services_Yadis
+ * @link     http://pear.php.net/Yadis
  */
-class Services_Yadis
+class Yadis
 {
 
     /**
@@ -127,7 +129,7 @@ class Services_Yadis
     /**
      * Holds the response received during Service Discovery.
      *
-     * @var HTTP_Request2_Response
+     * @var Response
      */
     protected $httpResponse = null;
 
@@ -150,10 +152,10 @@ class Services_Yadis
     protected $xrdsLocationHeaderUrl = '';
 
     /**
-     * Instance of Services_Yadis_Xrds_Namespace for managing namespaces
+     * Instance of XrdsNamespace for managing namespaces
      * associated with an XRDS document.
      *
-     * @var Services_Yadis_Xrds_Namespace
+     * @var XrdsNamespace
      */
     protected $namespace = null;
 
@@ -186,9 +188,9 @@ class Services_Yadis
     protected $httpRequestOptions = array();
 
     /**
-     * HTTP_Request2 object utilised by this class if externally set
+     * Request2 object utilised by this class if externally set
      *
-     * @var HTTP_Request2
+     * @var Request2
      */
     protected $httpRequest = null;
 
@@ -198,38 +200,38 @@ class Services_Yadis
      * Allows settings of the initial Yadis ID (an OpenID URL for example) and
      * an optional list of additional namespaces. For example, OpenID uses a
      * namespace such as: xmlns:openid="http://openid.net/xmlns/1.0"
-     * Namespaces are assigned to a Services_Yadis_Xrds_Namespace container
+     * Namespaces are assigned to a XrdsNamespace container
      * object to be passed more easily to other objects being
      *
-     * @param string $yadisId    Optional Yadis ID
-     * @param array  $namespaces Optional array of namespaces
-     *
-     * @return void
+     * @param string|null $yadisId Optional Yadis ID
+     * @param array $namespaces Optional array of namespaces
+     * @throws YadisException
      */
-    public function __construct($yadisId = null, array $namespaces = array())
+    public function __construct(string $yadisId = null, array $namespaces = array())
     {
-        $this->namespace = new Services_Yadis_Xrds_Namespace;
+        $this->namespace = new XrdsNamespace;
         $this->addNamespaces($namespaces);
+
         if (isset($yadisId)) {
             $this->setYadisId($yadisId);
         }
     }
 
     /**
-     * Set options to be passed to the PEAR HTTP_Request2 constructor
+     * Set options to be passed to the PEAR Request2 constructor
      *
      * @param array $options Array of options for HTTP_Request
-     *
-     * @return Services_Yadis
+     * @return Yadis
      */
     public function setHttpRequestOptions(array $options)
     {
         $this->httpRequestOptions = $options;
+
         return $this;
     }
 
     /**
-     * Get options to be passed to the PEAR HTTP_Request2 constructor
+     * Get options to be passed to the PEAR Request2 constructor
      *
      * @return array
      */
@@ -248,8 +250,8 @@ class Services_Yadis
      * validation support for Internationalised Domain Names. To be addressed.
      *
      * @param string $yadisId The Yadis ID
-     *
      * @return void
+     * @throws YadisException
      */
     public function setYadisId($yadisId)
     {
@@ -261,14 +263,16 @@ class Services_Yadis
      * Returns the original Yadis ID string set for this class.
      *
      * @return string
+     * @throws YadisException
      */
     public function getYadisId()
     {
         if (!isset($this->yadisId)) {
-            throw new Services_Yadis_Exception(
+            throw new YadisException(
                 'No Yadis ID has been set on this object yet'
             );
         }
+
         return $this->yadisId;
     }
 
@@ -278,9 +282,8 @@ class Services_Yadis
      * Note: This currently only supports XRI transformations.
      *
      * @param string $yadisId The Yadis ID
-     *
-     * @return Services_Yadis
-     * @throws Services_Yadis_Exception
+     * @return Yadis
+     * @throws YadisException
      */
     public function setYadisUrl($yadisId)
     {
@@ -298,7 +301,7 @@ class Services_Yadis
         if (stripos($yadisId, 'xri://') === 0 ||
             in_array($yadisId[0], $this->xriIdentifiers)) {
 
-            $xri = Services_Yadis_Xri::getInstance();
+            $xri = Xri::getInstance();
 
             $xri->setHttpRequestOptions($this->getHttpRequestOptions());
             $this->yadisUrl = $xri->setNamespace($this->namespace)->toUri($yadisId);
@@ -310,7 +313,7 @@ class Services_Yadis
          * The use of IRIs (International Resource Identifiers) is governed by
          * RFC 3490-3495. Not yet available for validation in PEAR.
          */
-        throw new Services_Yadis_Exception(
+        throw new YadisException(
             'Unable to validate a Yadis ID as a URI, '
             . 'or to transform a Yadis ID into a valid URI.'
         );
@@ -322,14 +325,16 @@ class Services_Yadis
      * required transformation to a valid URI.
      *
      * @return string
+     * @throws YadisException
      */
     public function getYadisUrl()
     {
         if (!isset($this->yadisUrl)) {
-            throw new Services_Yadis_Exception(
+            throw new YadisException(
                 'No Yadis ID/URL has been set on this object yet'
             );
         }
+
         return $this->yadisUrl;
     }
 
@@ -338,12 +343,13 @@ class Services_Yadis
      * parser when it receives a valid XRD document.
      *
      * @param array $namespaces Array of namespaces
-     *
-     * @return  Services_Yadis
+     * @return  Yadis
+     * @throws YadisException
      */
     public function addNamespaces(array $namespaces)
     {
         $this->namespace->addNamespaces($namespaces);
+
         return $this;
     }
 
@@ -351,14 +357,15 @@ class Services_Yadis
      * Add a single namespace to be utilised by the XML parser when it receives
      * a valid XRD document.
      *
-     * @param string $namespace    The namespace name
+     * @param string $namespace The namespace name
      * @param string $namespaceUrl The namespace url
-     *
-     * @return Services_Yadis
+     * @return Yadis
+     * @throws YadisException
      */
-    public function addNamespace($namespace, $namespaceUrl)
+    public function addNamespace(string $namespace, string $namespaceUrl)
     {
         $this->namespace->addNamespace($namespace, $namespaceUrl);
+
         return $this;
     }
 
@@ -387,11 +394,14 @@ class Services_Yadis
     /**
      * Performs Service Discovery, i.e. the requesting and parsing of a valid
      * Yadis (XRD) document into a list of Services and Service Data. The
-     * return value will be an instance of Services_Yadis_Xrds which will
+     * return value will be an instance of Yadis_Xrds which will
      * implement SeekableIterator. Returns FALSE on failure.
      *
-     * @return Services_Yadis_Xrds|boolean
-     * @throws Services_Yadis_Exception
+     * @return XrdsService
+     * @throws Request2Exception
+     * @throws Request2\Exceptions\Exception
+     * @throws Request2\Exceptions\LogicException
+     * @throws YadisException
      */
     public function discover()
     {
@@ -402,11 +412,11 @@ class Services_Yadis
 
         // Check XRI first
         if (in_array($this->yadisId[0], $this->xriIdentifiers)) {
-            $xri                = Services_Yadis_Xri::getInstance();
+            $xri                = Xri::getInstance();
             $xrds               = $xri->toCanonicalID($xri->getXri());
             $this->httpResponse = $xri->getHTTPResponse();
 
-            return new Services_Yadis_Xrds_Service($xrds, $this->namespace);
+            return new XrdsService($xrds, $this->namespace);
         }
 
         while ($xrdsDocument === null) {
@@ -420,7 +430,7 @@ class Services_Yadis
              * xrdStatus flag to true.
              */
             if (!$responseType == self::XRDS_CONTENT_TYPE && $xrdStatus == true) {
-                throw new Services_Yadis_Exception(
+                throw new YadisException(
                     'Yadis protocol could not locate a valid XRD document'
                 );
             }
@@ -445,7 +455,7 @@ class Services_Yadis
                 $xrdsDocument = $this->httpResponse->getBody();
                 break;
             default:
-                throw new Services_Yadis_Exception(
+                throw new YadisException(
                     'Yadis protocol could not locate a valid XRD document'
                 );
             }
@@ -453,63 +463,66 @@ class Services_Yadis
 
         try {
             $serviceList = $this->parseXrds($xrdsDocument);
-        } catch (PEAR_Exception $e) {
-            throw new Services_Yadis_Exception(
+        } catch (\Exception $e) {
+            throw new YadisException(
                 'XRD Document could not be parsed with the following message: '
                 . $e->getMessage(), $e->getCode());
         }
+
         return $serviceList;
     }
 
     /**
      * Return the final HTTP response
      *
-     * @return HTTP_Request2_Response
+     * @return Response
      */
     public function getHTTPResponse()
     {
-        if ($this->httpResponse instanceof HTTP_Request2_Response) {
+        if ($this->httpResponse instanceof Response) {
             return $this->httpResponse;
         }
         return null;
     }
 
     /**
-     * Setter for custom HTTP_Request2 type object
+     * Setter for custom Request2 type object
      *
-     * @param HTTP_Request2 $request Instance of HTTP_Request2
+     * @param Request2 $request Instance of Request2
      *
      * @return void
      */
-    public function setHttpRequest(HTTP_Request2 $request)
+    public function setHttpRequest(Request2 $request)
     {
         $this->httpRequest = $request;
     }
 
     /**
-     * Gets the HTTP_Request2 object
+     * Gets the Request2 object
      *
-     * @return HTTP_Request2
+     * @return Request2
+     * @throws Request2\Exceptions\LogicException
      */
     public function getHttpRequest()
     {
         if ($this->httpRequest === null) {
-            $this->httpRequest = new HTTP_Request2();
+            $this->httpRequest = new Request2();
             $this->httpRequest->setConfig($this->getHttpRequestOptions());
         }
         return $this->httpRequest;
     }
 
     /**
-     * Run any instance of HTTP_Request2_Response through a set of filters to
+     * Run any instance of Response through a set of filters to
      * determine the Yadis Response type which in turns determines how the
      * response should be reacted to or dealt with.
      *
-     * @param HTTP_Request2_Response $request Instance of HTTP_Request2_Response
-     *
+     * @param Response $response
      * @return integer
+     * @throws Request2Exception
+     * @throws YadisException
      */
-    protected function getResponseType(HTTP_Request2_Response $response)
+    protected function getResponseType(Response $response)
     {
         if ($this->isXrdsContentType($response)) {
             return self::XRDS_CONTENT_TYPE;
@@ -522,25 +535,28 @@ class Services_Yadis
     }
 
     /**
-     * Use the HTTP_Request2 to issue an HTTP GET request carrying the
+     * Use the Request2 to issue an HTTP GET request carrying the
      * "Accept" header value of "application/xrds+xml". This can allow
      * servers to quickly respond with a valid XRD document rather than
      * forcing the client to follow the X-XRDS-Location bread crumb trail.
      *
      * @param string $url URL
-     *
-     * @return HTTP_Request2
+     * @return Response
+     * @throws Request2\Exceptions\Exception
+     * @throws Request2\Exceptions\LogicException
+     * @throws YadisException
      */
     protected function get($url)
     {
         $request = $this->getHttpRequest();
         $request->setUrl($url);
-        $request->setMethod(HTTP_REQUEST2::METHOD_GET);
+        $request->setMethod(Request2::METHOD_GET);
         $request->setHeader('Accept', 'application/xrds+xml');
+
         try {
             return $request->send();
-        } catch (HTTP_Request2_Exception $e) {
-            throw new Services_Yadis_Exception(
+        } catch (Request2Exception $e) {
+            throw new YadisException(
                 'Invalid response to Yadis protocol received: ' . $e->getMessage(),
                 $e->getCode()
             );
@@ -552,11 +568,11 @@ class Services_Yadis
      * we can find the XRDS resource for this user. If exists, the value
      * is set to the private $xrdsLocationHeaderUrl property.
      *
-     * @param HTTP_Request2_Response $response Instance of HTTP_Request2_Response
-     *
+     * @param Response $response Instance of Response
      * @return boolean
+     * @throws YadisException
      */
-    protected function isXrdsLocationHeader(HTTP_Request2_Response $response)
+    protected function isXrdsLocationHeader(Response $response)
     {
         if ($response->getHeader('x-xrds-location')) {
             $location = $response->getHeader('x-xrds-location');
@@ -566,7 +582,7 @@ class Services_Yadis
         if (empty($location)) {
             return false;
         } elseif (!self::validateURI($location)) {
-            throw new Services_Yadis_Exception(
+            throw new YadisException(
                 'Invalid URI found during Discovery for location of XRDS document:'
                 . htmlentities($location, ENT_QUOTES, 'utf-8')
             );
@@ -579,11 +595,11 @@ class Services_Yadis
      * Checks whether the Response contains the XRDS resource. It should, per
      * the specifications always be served as application/xrds+xml
      *
-     * @param HTTP_Request2_Response $response Instance of HTTP_Request2_Response
+     * @param Response $response Instance of Response
      *
      * @return boolean
      */
-    protected function isXrdsContentType(HTTP_Request2_Response $response)
+    protected function isXrdsContentType(Response $response)
     {
         if (!$response->getHeader('Content-Type')
             || stripos($response->getHeader('Content-Type'),
@@ -600,12 +616,12 @@ class Services_Yadis
      * has a http-equiv meta element with a content attribute pointing to where
      * we can fetch the XRD document.
      *
-     * @param HTTP_Request2_Response $response Instance of HTTP_Request2_Response
+     * @param Response $response Instance of Response
      *
      * @return boolean
-     * @throws Services_Yadis_Exception
+     * @throws YadisException|\Pear\Http\Request2\Exceptions\Request2Exception
      */
-    protected function isMetaHttpEquiv(HTTP_Request2_Response $response)
+    protected function isMetaHttpEquiv(Response $response)
     {
         $location = null;
         if (!in_array($response->getHeader('Content-Type'),
@@ -639,7 +655,7 @@ class Services_Yadis
         if (is_null($location)) {
             return false;
         } elseif (!self::validateURI($location)) {
-            throw new Services_Yadis_Exception(
+            throw new YadisException(
                 'The URI parsed from the HTML Alias document appears to be invalid, '
                 . 'or could not be found: '
                 . htmlentities($location, ENT_QUOTES, 'utf-8')
@@ -655,37 +671,73 @@ class Services_Yadis
     }
 
     /**
-     * Creates a new Services_Yadis_Xrds object which uses SimpleXML to
-     * parse the XML into a list of Iterable Services_Yadis_Service
+     * Creates a new Yadis_Xrds object which uses SimpleXML to
+     * parse the XML into a list of Iterable Yadis_Service
      * objects.
      *
      * @param string $xrdsDocument The plaintext XRDS document
-     *
-     * @return Services_Yadis_Xrds|boolean
+     * @return XrdsService
+     * @throws YadisException
      */
     protected function parseXrds($xrdsDocument)
     {
         $xrds = new SimpleXMLElement($xrdsDocument);
-        return new Services_Yadis_Xrds_Service($xrds, $this->namespace);
+
+        return new XrdsService($xrds, $this->namespace);
     }
 
-    /**
-     * Wrapper for Validate::uri() to avoid non-static strict warnings
-     * 
-     * @param string $uri The URI to validate
-     * 
-     * @return bool
-     */
-    static public function validateURI($uri)
+    public static function validateURI(string $url, $options = null): bool
     {
-        static $validate = null;
-    
-        if ($validate === null) {
-            $validate = new Validate();
+//        $strict = ';/?:@$,';
+        $strict = '#[' . preg_quote(';/?:@$,', '#') . ']#';
+        $domain_check = false;
+        $allowed_schemes = null;
+
+        if (is_array($options)) {
+            extract($options);
         }
 
-        return $validate->uri($uri);
+        if (
+            preg_match(
+             '&^(?:([a-z][-+.a-z0-9]*):)?                             # 1. scheme
+              (?://                                                   # authority start
+              (?:((?:%[0-9a-f]{2}|[-a-z0-9_.!~*\'();:\&=+$,])*)@)?    # 2. authority-userinfo
+              (?:((?:[a-z0-9](?:[-a-z0-9]*[a-z0-9])?\.)*[a-z](?:[a-z0-9]+)?\.?)  # 3. authority-hostname OR
+              |([0-9]{1,3}(?:\.[0-9]{1,3}){3}))                       # 4. authority-ipv4
+              (?::([0-9]*))?)                                        # 5. authority-port
+              ((?:/(?:%[0-9a-f]{2}|[-a-z0-9_.!~*\'():@\&=+$,;])*)*/?)? # 6. path
+              (?:\?([^#]*))?                                          # 7. query
+              (?:\#((?:%[0-9a-f]{2}|[-a-z0-9_.!~*\'();/?:@\&=+$,])*))? # 8. fragment
+              $&xi', $url, $matches) !== 1
+        ) {
+            return false;
+        }
+
+        $scheme = isset($matches[1]) ? $matches[1] : '';
+        $authority = isset($matches[3]) ? $matches[3] : '' ;
+        if (
+            is_array($allowed_schemes) &&
+            !in_array($scheme, $allowed_schemes)
+        ) {
+            return false;
+        }
+
+        if (!empty($matches[4])) {
+            $parts = explode('.', $matches[4]);
+            foreach ($parts as $part) {
+                if ($part > 255) {
+                    return false;
+                }
+            }
+        } elseif ($domain_check && function_exists('checkdnsrr')) {
+            if (!checkdnsrr($authority, 'A')) {
+                return false;
+            }
+        }
+
+        return !(
+            (!empty($matches[7]) && preg_match($strict, $matches[7])) ||
+            (!empty($matches[8]) && preg_match($strict, $matches[8]))
+        );
     }
 }
-
-?>

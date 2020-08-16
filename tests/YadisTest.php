@@ -1,27 +1,30 @@
 <?php
-require_once 'Services/Yadis.php';
-require_once 'HTTP/Request2.php';
-require_once 'HTTP/Request2/Adapter/Mock.php';
 
-class Services_YadisTest extends PHPUnit_Framework_TestCase
+namespace Tests;
+
+use Pear\Http\Request2;
+use Pear\Http\Request2\Adapters\Mock;
+use Pear\Http\Request2\Exceptions\Request2Exception;
+use Pear\Services\Yadis\Exceptions\YadisException;
+use Pear\Services\Yadis\Yadis;
+use PHPUnit\Framework\TestCase;
+
+class YadisTest extends TestCase
 {
-    /**
-     * @expectedException Services_Yadis_Exception
-     * @expectedExceptionMessage Invalid response to Yadis protocol received: A test error
-     */
     public function testGetException()
     {
-        $httpMock = new HTTP_Request2_Adapter_Mock();
+        $this->expectException(YadisException::class);
+        $this->expectExceptionMessage('Invalid response to Yadis protocol received: A test error');
+        $httpMock = new Mock();
         $httpMock->addResponse(
-            new HTTP_Request2_Exception('A test error', 500)
+            new Request2Exception('A test error', 500)
         );
-        
-        $http = new HTTP_Request2();
+
+        $http = new Request2();
         $http->setAdapter($httpMock);
 
-        $sy = new Services_Yadis('http://example.org/openid');
+        $sy = new Yadis('http://example.org/openid');
         $sy->setHttpRequest($http);
-        $xrds = $sy->discover();
+        $sy->discover();
     }
 }
-?>

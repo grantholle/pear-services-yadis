@@ -1,4 +1,11 @@
 <?php
+
+namespace Pear\Services\Yadis;
+
+use DOMDocument;
+use Pear\Services\Yadis\Xrds\XrdsNamespace;
+use SimpleXMLElement;
+
 /**
  * Implementation of the Yadis Specification 1.0 protocol for service
  * discovery from an Identity URI/XRI or other.
@@ -50,7 +57,7 @@
  * @author     Pádraic Brady (http://blog.astrumfutura.com)
  * @license    http://opensource.org/licenses/bsd-license.php New BSD License
  */
-class Services_Yadis_Service
+class Service
 {
 
     /**
@@ -71,13 +78,13 @@ class Services_Yadis_Service
 
     /**
      * Class constructor; initialise the object with a Service node from the
-     * XRDS document, and the current Services_Yadis_Xrds_Namespace
+     * XRDS document, and the current XrdsNamespace
      * object to provide the current namespaces for using XPath queries.
      *
      * @param   SimpleXMLElement $serviceNode
-     * @param   Services_Yadis_Xrds_Namespace $namespace
+     * @param   XrdsNamespace $namespace
      */
-    public function __construct(SimpleXMLElement $serviceNode, Services_Yadis_Xrds_Namespace $namespace)
+    public function __construct(SimpleXMLElement $serviceNode, XrdsNamespace $namespace)
     {
         $this->_serviceNode = $serviceNode;
         $this->_namespace = $namespace;
@@ -110,7 +117,7 @@ class Services_Yadis_Service
 
      /**
      * Return an array of Service Type LocalID strings.
-     * 
+     *
      * @return array|boolean
      */
     public function getLocalIDs()
@@ -149,17 +156,17 @@ class Services_Yadis_Service
      * This is just a simple transfer by loading the XML output from
      * the SimpleXMLElement object into a new DOMDocument instance.
      *
-     * @return DOMDocument
+     * @return DOMDocument|\DOMElement|false
      */
     public function getDomObject()
     {
-        return dom_import_simplexml($this->serviceNode);
+        return dom_import_simplexml($this->_serviceNode);
     }
 
     /**
-     * Return the current Services_Yadis_Xrds_Namespace object.
+     * Return the current XrdsNamespace object.
      *
-     * @return  Services_Yadis_Xrds_Namespace
+     * @return  XrdsNamespace
      */
     public function getNamespaceObject()
     {
@@ -202,5 +209,4 @@ class Services_Yadis_Service
         }
         return $return;
     }
-
 }

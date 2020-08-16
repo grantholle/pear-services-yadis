@@ -1,10 +1,10 @@
 {
-    "name": "pear/services_yadis",
-    "description": "Implementation of the Yadis Specification 1.0 protocol",
-    "homepage": "http://pear.php.net/package/Services_Yadis",
+    "name": "grantholle/pear-services-yadis",
+    "description": "A psr-4 compliant port of pear/services_yadis, an implementation of the Yadis Specification 1.0 protocol",
+    "homepage": "https://github.com/grantholle/pear-services-yadis",
     "support": {
-        "issues": "http://pear.php.net/bugs/search.php?cmd=display&package_name[]=Services_Yadis",
-        "source": "https://github.com/pear/Services_Yadis"
+        "issues": "https://github.com/grantholle/pear-services-yadis/issues",
+        "source": "https://github.com/grantholle/pear-services-yadis"
     },
     "license": "BSD-2-Clause",
     "type": "library",
@@ -13,22 +13,30 @@
             "email": "shupp@php.net",
             "name": "Bill Shupp",
             "role": "Lead"
+        },
+        {
+            "name": "Grant Holle",
+            "homepage": "https://grantholle.com"
         }
     ],
     "autoload": {
-        "psr-0": {
-            "Services": "./"
+        "psr-4": {
+            "Pear\\Services\\Yadis\\": "src"
         }
     },
-    "include-path": [
-        "./"
-    ],
-    "require": {
-        "pear/http_request2": "^2.2.0",
-        "pear/net_url2": "^2.2.0",
-        "pear/validate": ">=0.8.5"
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests"
+        }
     },
     "require-dev": {
-        "phpunit/phpunit": "^5.7"
+        "phpunit/phpunit": "^8"
+    },
+    "require": {
+        "grantholle/pear-http-request2": "^3.0",
+        "grantholle/pear-net-url2": "^3.0",
+        "php": "^7.2",
+        "ext-simplexml": "*",
+        "ext-dom": "*"
     }
 }

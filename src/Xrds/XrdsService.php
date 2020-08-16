@@ -1,4 +1,12 @@
 <?php
+
+namespace Pear\Services\Yadis\Xrds;
+
+use Iterator;
+use Pear\Services\Yadis\Exceptions\YadisException;
+use Pear\Services\Yadis\Service;
+use SimpleXMLElement;
+
 /**
  * Implementation of the Yadis Specification 1.0 protocol for service
  * discovery from an Identity URI/XRI or other.
@@ -6,7 +14,7 @@
  * PHP version 5
  *
  * LICENSE:
- * 
+ *
  * Copyright (c) 2007 Pádraic Brady <padraic.brady@yahoo.com>
  * All rights reserved.
  *
@@ -17,9 +25,9 @@
  *    * Redistributions of source code must retain the above copyright
  *      notice, this list of conditions and the following disclaimer.
  *    * Redistributions in binary form must reproduce the above copyright
- *      notice, this list of conditions and the following disclaimer in the 
+ *      notice, this list of conditions and the following disclaimer in the
  *      documentation and/or other materials provided with the distribution.
- *    * The name of the author may not be used to endorse or promote products 
+ *    * The name of the author may not be used to endorse or promote products
  *      derived from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
@@ -41,19 +49,13 @@
  * @version    $Id$
  */
 
-/** Services_Yadis_Xrds */
-require_once 'Services/Yadis/Xrds.php';
-
-/** Services_Yadis_Service */
-require_once 'Services/Yadis/Service.php';
-
 /**
- * The Services_Yadis_Xrds_Service class is a wrapper for Service elements
+ * The Xrds_Service class is a wrapper for Service elements
  * of an XRD document which is parsed using SimpleXML, and contains methods for
  * retrieving data about each Service, including Type, Url and other arbitrary
  * data added in a separate namespace, e.g. openid:Delegate for OpenID 1.1.
  *
- * This class extends the basic Services_Yadis_Xrds wrapper to implement a
+ * This class extends the basic Xrds wrapper to implement a
  * Service object specific to the Yadis Specification 1.0. XRDS itself is not
  * an XML format ruled by Yadis, but by an OASIS proposal.
  *
@@ -62,7 +64,7 @@ require_once 'Services/Yadis/Service.php';
  * @author     Pádraic Brady (http://blog.astrumfutura.com)
  * @license    http://opensource.org/licenses/bsd-license.php New BSD License
  */
-class Services_Yadis_Xrds_Service extends Services_Yadis_Xrds implements Iterator
+class XrdsService extends Xrds implements Iterator
 {
 
     /**
@@ -78,12 +80,12 @@ class Services_Yadis_Xrds_Service extends Services_Yadis_Xrds implements Iterato
      * @var SimpleXMLElement
      */
     protected $_xrdNode = null;
-    
+
     /**
      * The Yadis Services resultset
      *
      * @var array
-     */ 
+     */
     protected $_services = array();
 
     /**
@@ -96,14 +98,16 @@ class Services_Yadis_Xrds_Service extends Services_Yadis_Xrds implements Iterato
     /**
      * Constructor; Accepts an XRD document for parsing.
      * Parses the XRD document by <xrd:Service> element to construct an array
-     * of Services_Yadis_Service objects ordered by their priority.
+     * of Service objects ordered by their priority.
      *
-     * @param   SimpleXMLElement $xrds
-     * @param   Services_Yadis_Xrds_Namespace $namespace
+     * @param SimpleXMLElement $xrds
+     * @param XrdsNamespace $namespace
+     * @throws YadisException
      */
-    public function __construct(SimpleXMLElement $xrds, Services_Yadis_Xrds_Namespace $namespace)
+    public function __construct(SimpleXMLElement $xrds, XrdsNamespace $namespace)
     {
         parent::__construct($xrds, $namespace);
+
         /**
          * The Yadis Specification requires we only use the last xrd node. The
          * rest being ignored (if present for whatever reason). Important to
@@ -113,66 +117,68 @@ class Services_Yadis_Xrds_Service extends Services_Yadis_Xrds implements Iterato
         $this->_xrdNode = $this->_xrdNodes[count($this->_xrdNodes) - 1];
         $this->_namespace->registerXpathNamespaces($this->_xrdNode);
         $services = $this->_xrdNode->xpath('xrd:Service');
+
         foreach ($services as $service) {
-            $serviceObj = new Services_Yadis_Service($service, $this->_namespace);
+            $serviceObj = new Service($service, $this->_namespace);
             $this->_addService($serviceObj);
         }
-        $this->_services = Services_Yadis_Xrds::sortByPriority($this->_services);
+
+        $this->_services = Xrds::sortByPriority($this->_services);
     }
 
     /**
      * Implements Iterator::current()
-     * 
+     *
      * Return the current element.
      *
-     * @return Services_Yadis_Service
-     */ 
+     * @return Service
+     */
     public function current()
     {
          return current($this->_services);
     }
- 
+
     /**
      * Implements Iterator::key()
      *
      * Return the key of the current element.
-     * 
+     *
      * @return integer
-     */ 
+     */
     public function key()
     {
          return key($this->_services);
     }
- 
+
     /**
      * Implements Iterator::next()
-     * 
+     *
      * Increments pointer to next Service object.
      *
      * @return void
-     */ 
+     */
     public function next()
     {
          $this->_valid = (false !== next($this->_services));
     }
- 
+
     /**
      * Implements Iterator::rewind()
-     * 
+     *
      * Rewinds the Iterator to the first Service object
      *
-     * @return boolean
-     */ 
+     * @return void
+     */
     public function rewind()
     {
-        $this->_valid = (false !== reset($this->_services)); 
+        $this->_valid = (false !== reset($this->_services));
     }
- 
+
     /**
      * Implement Iterator::valid()
      *
      * @return boolean
-     */ 
+     */
     public function valid()
     {
          return $this->_valid;
@@ -183,9 +189,9 @@ class Services_Yadis_Xrds_Service extends Services_Yadis_Xrds implements Iterato
      * a missing or invalid priority should be shuffled to the bottom
      * of the priority order.
      *
-     * @param Services_Yadis_Service $service
+     * @param Service $service
      */
-    protected function _addService(Services_Yadis_Service $service)
+    protected function _addService(Service $service)
     {
         $servicePriority = $service->getPriority();
         if(is_null($servicePriority) || !is_numeric($servicePriority)) {
