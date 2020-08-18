@@ -10,17 +10,17 @@ class Xrds
     /**
      * @var int
      */
-    protected $currentKey = 0;
+    protected $_currentKey = 0;
 
     /**
      * @var SimpleXMLElement
      */
-    protected $xrdNodes = null;
+    protected $_xrdNodes = null;
 
     /**
      * @var XrdsNamespace
      */
-    protected $namespace = null;
+    protected $_namespace = null;
 
     /**
      * Xrds constructor.
@@ -31,14 +31,14 @@ class Xrds
      */
     public function __construct(SimpleXMLElement $xrds, XrdsNamespace $namespace)
     {
-        $this->namespace = $namespace;
+        $this->_namespace = $namespace;
         $xrdNodes = $this->getValidXrdsNodes($xrds);
 
         if (!$xrdNodes) {
             throw new YadisException('The XRD document was found to be invalid');
         }
 
-        $this->xrdNodes = $xrdNodes;
+        $this->_xrdNodes = $xrdNodes;
     }
 
     /**
@@ -70,7 +70,7 @@ class Xrds
      */
     public function addNamespaces(array $namespaces)
     {
-        $this->namespace->addNamespaces($namespaces);
+        $this->_namespace->addNamespaces($namespaces);
 
         return $this;
     }
@@ -86,7 +86,7 @@ class Xrds
      */
     public function addNamespace(string $namespace, string $namespaceUrl)
     {
-        $this->namespace->addNamespace($namespace, $namespaceUrl);
+        $this->_namespace->addNamespace($namespace, $namespaceUrl);
 
         return $this;
     }
@@ -99,7 +99,7 @@ class Xrds
      */
     public function getNamespace(string $namespace)
     {
-        return $this->namespace->getNamespace($namespace);
+        return $this->_namespace->getNamespace($namespace);
     }
 
     /**
@@ -109,12 +109,12 @@ class Xrds
      */
     public function getNamespaces()
     {
-        return $this->namespace->getNamespaces();
+        return $this->_namespace->getNamespaces();
     }
 
     protected function getValidXrdsNodes(SimpleXMLElement $xrds)
     {
-        $this->namespace->registerXpathNamespaces($xrds);
+        $this->_namespace->registerXpathNamespaces($xrds);
 
         $root = $xrds->xpath('/xrds:XRDS[1]');
 
